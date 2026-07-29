@@ -12,6 +12,8 @@ class FormularioCalculadora(tk.Tk):
         self.construir_widget()
         self.construir_widget_toggle()
 
+        self.historial = []  # ← Lista donde se guardarán las operaciones completadas
+
     def config_window(self):
         # Configuración inicial de la ventana
         self.title('Python GUI Calculadora')
@@ -27,6 +29,9 @@ class FormularioCalculadora(tk.Tk):
             'Arial', 16), fg=cons.COLOR_DE_TEXTO_DARK, bg=cons.COLOR_DE_FONDO_DARK, justify='right')
         self.operation_label.grid(
             row=0, column=3, padx=10, pady=10)  # Añadido columnspan
+
+        # Vincular el clic para abrir la ventana del historial
+        self.operation_label.bind("<Button-1>", self.show_history)
 
         # Pantalla de operacion
         self.entry = tk.Entry(self, width=12, font=(
@@ -111,13 +116,17 @@ class FormularioCalculadora(tk.Tk):
     def on_button_click(self, value):
         if value == '=':
             try:
-                expression = self.entry.get().replace('%', '/100')
-                result = eval(expression)
-                self.entry.delete(0, tk.END)
-                self.entry.insert(tk.END, str(result))
-                # Mostrar la operación en la etiqueta, excluyendo el signo '='
-                operation = expression + " " + value
-                self.operation_label.config(text=operation)
+                exp_original = self.entry.get()
+                expression = self.entry.get().replace('%', '/100') # si hay %, se cambia a /100
+                result = eval(expression) # Ejecuta la operación
+                self.entry.delete(0, tk.END) # Borra zona de operación mostrando el output
+                self.entry.insert(tk.END, str(result)) 
+                # Actualizamos la etiqueta superior (operation_label)
+                self.operation_label.config(text=f"{exp_original} =")
+
+                # Guardamos la OPERACIÓN COMPLETA en el historial ("7-6 = 1")
+                operacion_completa = f"{exp_original} = {result}"
+                self.historial.append(operacion_completa)
             except Exception as e:
                 self.entry.delete(0, tk.END)
                 self.entry.insert(tk.END, "Error")
@@ -140,3 +149,61 @@ class FormularioCalculadora(tk.Tk):
             # Actualizar la etiqueta de operación solo cuando se presiona '='
             if value == '=':
                 self.operation_label.config(text="")
+
+    def show_history(self, event=None):
+            """ Abre una ventana emergente que muestra la lista de operaciones realizadas """
+            history_window = tk.Toplevel(self)
+            history_window.title("Historial de Operaciones")
+            history_window.geometry("300x400")
+            history_window.configure(bg=cons.COLOR_DE_FONDO_DARK)
+
+            # Título interno
+            lbl_titulo = tk.Label(
+                history_window, 
+                text="📜 Historial", 
+                font=('Arial', 14, 'bold'),
+                fg=cons.COLOR_DE_TEXTO_DARK,
+                bg=cons.COLOR_DE_FONDO_DARK
+            )
+            lbl_titulo.pack(pady=10)
+
+            # Marco y barra de desplazamiento (Scrollbar)
+            frame_lista = tk.Frame(history_window, bg=cons.COLOR_DE_FONDO_DARK)
+            frame_lista.pack(fill="both", expand=True, padx=15, pady=5)
+
+            scrollbar = tk.Scrollbar(frame_lista)
+            scrollbar.pack(side="right", fill="y")
+
+            history_list = tk.Listbox(
+                frame_lista,
+                font=('Arial', 12),
+                bg=cons.COLOR_CAJA_TEXTO_DARK,
+                fg=cons.COLOR_DE_TEXTO_DARK,
+                bd=0,
+                yscrollcommand=scrollbar.set
+            )
+            history_list.pack(side="left", fill="both", expand=True)
+            scrollbar.config(command= history_list.yview)
+
+            # Cargar los elementos guardados
+            if not self.historial:
+                history_list.insert(tk.END, " Sin operaciones aún.")
+            else:
+                for item in self.historial:
+                    history_list.insert(tk.END, f"  {item}")
+
+            # Botón para vaciar el historial
+            def clear_history():
+                self.historial.clear()
+                history_list.delete(0, tk.END)
+                history_list.insert(tk.END, " Historial borrado.")
+
+            btn_clear = tk.Button(
+                history_window,
+                text="Clear History",
+                bg="#E60000",
+                fg="#FFFFFF",
+                font=('Arial', 10, 'bold'),
+                command=clear_history
+            )
+            btn_clear.pack(pady=10)
